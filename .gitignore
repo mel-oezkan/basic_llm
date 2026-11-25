@@ -1,0 +1,46 @@
+# OS / editor
+.DS_Store
+.vscode/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Environments (uv)
+.venv/
+.python-version
+.env
+
+# Testing / tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Notebooks
+.ipynb_checkpoints/
+__marimo__/
+
+# Training outputs / model artifacts
+runs/
+checkpoints/
+outputs/
+wandb/
+*.pt
+*.pth
+*.bin
+*.safetensors
+*.ckpt
+
+# LaTeX build artifacts
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+*.fdb_latexmk
+*.fls
