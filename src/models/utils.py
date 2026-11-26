@@ -10,5 +10,5 @@ def count_params(model, prefix="") -> None:
     total = sum(p.numel() for p in model.parameters())
     trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
     logging.info(
-        f"{prefix}trainable: {trainable:,} / total: {total:,} ({100 * trainable / total:.4f}%)"
+        f"{prefix} trainable: {trainable:,} / total: {total:,} ({100 * trainable / total:.4f}%)"
     )
