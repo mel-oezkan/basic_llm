@@ -6,4 +6,9 @@ TEST_SIZE = 100
 SYSTEM = "You are a helpful assistant."
 
 MODEL = "HuggingFaceTB/SmolLM2-360M"
-LR = 1e-4
+TEMPLATE_FILE = "templates/qwen2-5_template.jinja"
+
+LR = 2e-4
+
+LORA_R = 8
+LORA_ALPHA = 16.0

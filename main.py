@@ -5,7 +5,7 @@ from datasets import load_dataset
 from torch.utils.data import DataLoader
 from transformers import  AutoModelForCausalLM
 
-from src.lora import add_lora, count_params
+from src.lora import apply_lora, count_params
 from src.helper import get_dataloaders, token_logprobs
 from src.tokenizer_utils import load_tokenizer, load_splits
 
@@ -40,16 +40,16 @@ if __name__ == "__main__":
         "val": "data/dolly/val.jsonl",
         "test": "data/dolly/test.jsonl",
     }
-    tok = load_tokenizer(cfg.MODEL)
+    tok = load_tokenizer(cfg.MODEL, cfg.TEMPLATE_FILE)
     ds = load_splits(tok, data_dirs)
     dataloaders = get_dataloaders(tok, ds)
 
     # load the model and add LoRA
     model = AutoModelForCausalLM.from_pretrained(cfg.MODEL, device_map="auto")
-    model = add_lora(model, r=4, alpha=1.0)
+    model = apply_lora(model, r=cfg.LORA_R, alpha=cfg.LORA_ALPHA)
     count_params(model, prefix="LoRA params")
 
-    optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.LR)
+    optimizer = torch.optim.AdamW([p for p in model.parameters() if p.requires_grad], lr=cfg.LR)
     validate_training(model, dataloaders["val"], sft_loss)
 
     # train the model
