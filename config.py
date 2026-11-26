@@ -12,3 +12,4 @@ LR = 2e-4
 
 LORA_R = 8
 LORA_ALPHA = 16.0
+EPOCHS = 10

@@ -1,8 +1,4 @@
-import polars as pl
 import torch
-import torch.nn as nn
-from datasets import load_dataset
-from torch.utils.data import DataLoader
 from transformers import  AutoModelForCausalLM
 
 from src.lora import apply_lora
@@ -57,7 +53,7 @@ def main():
     validate_training(model, dataloaders["val"], sft_loss)
 
     # train the model
-    for epoch in range(10):
+    for epoch in range(cfg.EPOCHS):
         model.train()
 
         n_batches = len(dataloaders["train"])
@@ -86,7 +82,7 @@ def main():
             val_losses.append(sft_loss(logits, input_ids, loss_mask).item())
 
         logger.info(f"epoch {epoch} | val loss {sum(val_losses) / len(val_losses):.4f}")
-    
+    torch.save({n: p for n, p in model.named_parameters() if p.requires_grad}, "/kaggle/working/lora.pt")
 
 
 if __name__ == "__main__":
