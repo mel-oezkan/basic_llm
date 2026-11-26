@@ -5,7 +5,7 @@ from datasets import load_dataset
 from torch.utils.data import DataLoader
 from transformers import  AutoModelForCausalLM
 
-from src.lora import apply_lora, count_params
+from src.lora import apply_lora
 from src.helper import get_dataloaders, token_logprobs
 from src.tokenizer_utils import load_tokenizer, load_splits
 
@@ -14,6 +14,9 @@ import config as cfg
 from src.training.utils import validate_training
 from src.uitls.logging import setup_logging
 from src.models.utils import count_params
+
+logger = logging.getLogger(__name__)
+
 
 def sft_loss(
     logits: torch.Tensor, labels: torch.Tensor, attention_mask: torch.Tensor
@@ -56,7 +59,8 @@ if __name__ == "__main__":
     for epoch in range(10):
         model.train()
 
-        for batch in dataloaders["train"]:
+        n_batches = len(dataloaders["train"])
+        for step, batch in enumerate(dataloaders["train"]):
             optimizer.zero_grad()
             input_ids = batch["input_ids"].to(model.device)
             attention_mask = batch["attention_mask"].to(model.device)
@@ -66,9 +70,10 @@ if __name__ == "__main__":
             loss = sft_loss(logits, input_ids, loss_mask)
             loss.backward()
             optimizer.step()
-            logging.info(f"Epoch: {epoch}, Batch: {batch['input_ids'].shape[0]}, Loss: {loss.item()}")
-        
+            logger.info(f"epoch {epoch} | batch {step + 1}/{n_batches} | train loss {loss.item():.4f}")
+
         model.eval()
+        val_losses = []
         for batch in dataloaders["val"]:
             input_ids = batch["input_ids"].to(model.device)
             attention_mask = batch["attention_mask"].to(model.device)
@@ -77,8 +82,9 @@ if __name__ == "__main__":
             with torch.no_grad():
                 logits = model(input_ids=input_ids, attention_mask=attention_mask).logits
         
-            val_loss = sft_loss(logits, input_ids, loss_mask)
-            logging.info(f"Epoch: {epoch}, Batch: {batch['input_ids'].shape[0]}, Loss: {val_loss.item()}")
+            val_losses.append(sft_loss(logits, input_ids, loss_mask).item())
+
+        logger.info(f"epoch {epoch} | val loss {sum(val_losses) / len(val_losses):.4f}")
 
     
 
