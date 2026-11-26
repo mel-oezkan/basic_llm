@@ -44,3 +44,6 @@ wandb/
 *.synctex.gz
 *.fdb_latexmk
 *.fls
+
+# datasets
+data/
