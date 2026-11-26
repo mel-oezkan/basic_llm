@@ -59,6 +59,7 @@ class LoRALinear(nn.Module):
 
 
 def add_lora(model, target_names=("q_proj", "v_proj"), r=4, alpha=1.0):
+
     for name, module in model.named_modules():
         for (
             child_name,
@@ -93,7 +94,7 @@ def apply_lora(base_model, r=4, alpha=1.0):
         r: The rank of the LoRA matrices
         alpha: The scaling factor for the LoRA matrices
     """
-    for p in model.parameters():
+    for p in base_model.parameters():
         p.requires_grad = False
 
     lora_model = add_lora(base_model, r=r, alpha=alpha)
