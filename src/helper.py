@@ -1,5 +1,9 @@
 import torch
 import torch.nn as nn
+from datasets import DatasetDict
+from torch.utils.data import DataLoader
+
+from src.tokenizer_utils import collate, load_tokenizer
 
 
 def token_logprobs(
@@ -69,3 +73,24 @@ def sequence_logprob(
 
     log_probs = get_logprobs(model, batch_input, batch_mask)
     return (log_probs * response_mask).sum(-1)
+
+
+
+def get_dataloaders(tokenizer, dd: DatasetDict) -> dict[str, DataLoader]:
+    """Create dataloaders for the train, val, and test splits.
+
+    params:
+        dd: DatasetDict with "train", "val", and "test" splits
+
+    return:
+        dict of dataloaders
+    """
+    return {
+        split: DataLoader(
+            ds,
+            batch_size=8,
+            shuffle=split == "train",
+            collate_fn=lambda b: collate(b, tokenizer.pad_token_id),
+        )
+        for split, ds in dd.items()
+    }
