@@ -33,7 +33,8 @@ def sft_loss(
     return -(lp * m).sum() / m.sum().clamp(min=1)
 
 
-if __name__ == "__main__":
+
+def main():
     # prepate script
     setup_logging(logfile="logs/train.log")
 
@@ -85,8 +86,9 @@ if __name__ == "__main__":
             val_losses.append(sft_loss(logits, input_ids, loss_mask).item())
 
         logger.info(f"epoch {epoch} | val loss {sum(val_losses) / len(val_losses):.4f}")
-
     
 
 
+if __name__ == "__main__":
+    main()
 
