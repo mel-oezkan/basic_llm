@@ -56,10 +56,10 @@ def sequence_logprob(
     batch_input = torch.full((n_inputs, max_tokens), PAD_ID, dtype=torch.long)
     batch_mask = torch.zeros((n_inputs, max_tokens), dtype=torch.long)
     #! if this script is changed to a different model we would need to check that 0 is a pad token
-    response_mask = torch.ones((n_inputs, max_tokens - 1), dtype=torch.bool)
+    response_mask = torch.zeros((n_inputs, max_tokens - 1), dtype=torch.bool)
 
     for i in range(n_inputs):
-        assert len(response_ids[i]) == 0, "There is no response"
+        assert len(response_ids[i]) > 0, "There is no response"
         total_len = len(prompt_ids[i]) + len(response_ids[i])
 
         fill_value = prompt_ids[i] + response_ids[i]
