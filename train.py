@@ -45,7 +45,7 @@ def main():
     dataloaders = get_dataloaders(tok, ds)
 
     # load the model and add LoRA
-    model = AutoModelForCausalLM.from_pretrained(cfg.MODEL, device_map="auto")
+    model = AutoModelForCausalLM.from_pretrained(cfg.MODEL, device_map="cuda")
     model = apply_lora(model, r=cfg.LORA_R, alpha=cfg.LORA_ALPHA)
     count_params(model, prefix="LoRA params")
 
