@@ -3,7 +3,7 @@ import math
 import torch
 import torch.nn as nn
 from transformers import AutoModelForCausalLM, AutoTokenizer
-
+from src.models.utils import count_params
 
 class LoRALinear(nn.Module):
     def __init__(self, base: nn.Linear, r=4, alpha=1.0):
@@ -41,6 +41,7 @@ class LoRALinear(nn.Module):
 
         return self.base(x) + (x @ self.A.T @ self.B.T) * self.scale
 
+    @torch.no_grad()
     def merge_weights(self):
         if self.merged_weights:
             return
@@ -48,6 +49,7 @@ class LoRALinear(nn.Module):
         self.base.weight.data += (self.B @ self.A) * self.scale
         self.merged_weights = True
 
+    @torch.no_grad()
     def unmerge_weights(self):
         if not self.merged_weights:
             return
@@ -68,17 +70,8 @@ def add_lora(model, target_names=("q_proj", "v_proj"), r=4, alpha=1.0):
     return model
 
 
-def count_params(model):
-    total = sum(p.numel() for p in model.parameters())
-    trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print(
-        f"trainable: {trainable:,} / total: {total:,} ({100 * trainable / total:.4f}%)"
-    )
-
-
 def train_step(model, optimizer, inputs, labels):
     # the optimizer is created once outside, so Adam's moment estimates persist across steps
-    model.train()
     optimizer.zero_grad()
     loss = model(**inputs, labels=labels).loss
     loss.backward()
@@ -90,6 +83,21 @@ def train_step(model, optimizer, inputs, labels):
 def eval_loss(model, inputs):
     model.eval()
     return model(**inputs, labels=inputs["input_ids"]).loss.item()
+
+
+def apply_lora(base_model, r=4, alpha=1.0):
+    """Create a LoRA model from a base model.
+
+    params:
+        base_model: The base model to add LoRA to
+        r: The rank of the LoRA matrices
+        alpha: The scaling factor for the LoRA matrices
+    """
+    for p in model.parameters():
+        p.requires_grad = False
+
+    lora_model = add_lora(base_model, r=r, alpha=alpha)
+    return lora_model
 
 if __name__ == "__main__":
     # load the smalles smollm model
@@ -130,10 +138,12 @@ if __name__ == "__main__":
     optimizer = torch.optim.AdamW(
         [p for p in model.parameters() if p.requires_grad], lr=1e-3
     )
+
+    model.train()
     losses = [train_step(model, optimizer, inputs, labels) for _ in range(50)]
     print("gibberish loss every 10 steps:", [round(x, 3) for x in losses[::10]], "final:", round(losses[-1], 3))
     print(f"held-out loss before/after: {heldout_before:.3f} / {eval_loss(model, heldout):.3f}")
-
+    
     params = dict(model.named_parameters())
     print("frozen weights changed:", any(not torch.equal(params[n], w) for n, w in frozen_before.items()))  # want False
     print("LoRA weights changed:  ", any(not torch.equal(params[n], w) for n, w in lora_before.items()))    # want True
