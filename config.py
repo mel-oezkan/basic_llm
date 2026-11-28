@@ -13,3 +13,7 @@ LR = 2e-4
 LORA_R = 8
 LORA_ALPHA = 16.0
 EPOCHS = 10
+
+SAVE_EVERY = 5
+MODEL_DTYPE = "float32"
+LORA_DTYPE = "float32"

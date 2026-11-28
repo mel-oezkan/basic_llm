@@ -1,3 +1,4 @@
+import logging
 import math
 
 import torch
@@ -6,8 +7,19 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from src.models.utils import count_params
 
 class LoRALinear(nn.Module):
-    def __init__(self, base: nn.Linear, r=4, alpha=1.0):
+    def __init__(self, base: nn.Linear, r=4, alpha=1.0, lora_dtype: str | None = None):
         super().__init__()
+        if not lora_dtype:
+            lora_torch_dtype = base.weight.dtype
+        else:
+            try:
+                lora_torch_dtype = getattr(torch, lora_dtype)
+                logging.info(f"Using LoRA dtype: {lora_dtype}")
+            except AttributeError:
+                lora_torch_dtype = base.weight.dtype
+                logging.warning(f"Invalid LoRA dtype: {lora_dtype}. Using default dtype.")
+
+        
         # load the base and set params to not require gradients
         self.base = base
         for p in self.base.parameters():
@@ -22,14 +34,14 @@ class LoRALinear(nn.Module):
         self.A = nn.Parameter(
             torch.empty(
                 (r, self.base.in_features),
-                dtype=base.weight.dtype,
+                dtype=lora_torch_dtype,
                 device=base.weight.device,
             ),
         )
         self.B = nn.Parameter(
             torch.zeros(
                 (self.base.out_features, r),
-                dtype=base.weight.dtype,
+                dtype=lora_torch_dtype,
                 device=base.weight.device,
             ),
         )
