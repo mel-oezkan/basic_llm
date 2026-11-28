@@ -11,7 +11,7 @@ from src.lora import apply_lora
 from src.models.utils import count_params
 from src.tokenizer_utils import load_splits, load_tokenizer
 from src.training.loss import masked_nll, sft_loss
-from src.training.utils import validate_training
+from src.training.utils import save_lora, validate_training
 from src.uitls.logging import setup_logging
 
 logger = logging.getLogger(__name__)
@@ -41,7 +41,9 @@ def main():
     model = AutoModelForCausalLM.from_pretrained(
         cfg.MODEL, device_map="cuda", dtype=model_dtype
     )
-    model = apply_lora(model, r=cfg.LORA_R, alpha=cfg.LORA_ALPHA)
+    model = apply_lora(
+        model, r=cfg.LORA_R, alpha=cfg.LORA_ALPHA, lora_dtype=cfg.LORA_DTYPE
+    )
     count_params(model, prefix="LoRA params")
 
     optimizer = torch.optim.AdamW(
@@ -109,15 +111,9 @@ def main():
         )
 
         if (epoch + 1) % cfg.SAVE_EVERY == 0:
-            torch.save(
-                {n: p for n, p in model.named_parameters() if p.requires_grad},
-                f"/kaggle/working/lora_epoch_{epoch + 1}.pt",
-            )
+            save_lora(model, f"/kaggle/working/lora_epoch_{epoch + 1}.pt", cfg)
 
-    torch.save(
-        {n: p for n, p in model.named_parameters() if p.requires_grad},
-        "/kaggle/working/lora.pt",
-    )
+    save_lora(model, "/kaggle/working/lora.pt", cfg)
 
 
 if __name__ == "__main__":

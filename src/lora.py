@@ -51,14 +51,16 @@ class LoRALinear(nn.Module):
         if self.merged_weights:
             return self.base(x)
 
-        return self.base(x) + (x @ self.A.T @ self.B.T) * self.scale
+        # compute the LoRA path in the LoRA dtype, then cast back to match the base output
+        lora_out = (x.to(self.A.dtype) @ self.A.T @ self.B.T) * self.scale
+        return self.base(x) + lora_out.to(x.dtype)
 
     @torch.no_grad()
     def merge_weights(self):
         if self.merged_weights:
             return
         # Merge the weights of A and B into the base linear layer
-        self.base.weight.data += (self.B @ self.A) * self.scale
+        self.base.weight.data += ((self.B @ self.A) * self.scale).to(self.base.weight.dtype)
         self.merged_weights = True
 
     @torch.no_grad()
@@ -66,11 +68,13 @@ class LoRALinear(nn.Module):
         if not self.merged_weights:
             return
         # Unmerge the weights of A and B from the base linear layer
-        self.base.weight.data -= (self.B @ self.A) * self.scale
+        self.base.weight.data -= ((self.B @ self.A) * self.scale).to(self.base.weight.dtype)
         self.merged_weights = False
 
 
-def add_lora(model, target_names=("q_proj", "v_proj"), r=4, alpha=1.0):
+def add_lora(
+    model, target_names=("q_proj", "v_proj"), r=4, alpha=1.0, lora_dtype: str | None = None
+):
 
     for name, module in model.named_modules():
         for (
@@ -79,7 +83,11 @@ def add_lora(model, target_names=("q_proj", "v_proj"), r=4, alpha=1.0):
         ) in module.named_children():
             if isinstance(child, nn.Linear) and child_name in target_names:
                 # Replace the linear layer with LoRALinear
-                setattr(module, child_name, LoRALinear(child, r=r, alpha=alpha))
+                setattr(
+                    module,
+                    child_name,
+                    LoRALinear(child, r=r, alpha=alpha, lora_dtype=lora_dtype),
+                )
     return model
 
 
@@ -98,18 +106,20 @@ def eval_loss(model, inputs):
     return model(**inputs, labels=inputs["input_ids"]).loss.item()
 
 
-def apply_lora(base_model, r=4, alpha=1.0):
+def apply_lora(base_model, r=4, alpha=1.0, lora_dtype: str | None = None):
     """Create a LoRA model from a base model.
 
     params:
         base_model: The base model to add LoRA to
         r: The rank of the LoRA matrices
         alpha: The scaling factor for the LoRA matrices
+        lora_dtype: torch dtype name for the LoRA matrices (e.g. "float32");
+            None uses the base layer's dtype
     """
     for p in base_model.parameters():
         p.requires_grad = False
 
-    lora_model = add_lora(base_model, r=r, alpha=alpha)
+    lora_model = add_lora(base_model, r=r, alpha=alpha, lora_dtype=lora_dtype)
     return lora_model
 
 if __name__ == "__main__":
